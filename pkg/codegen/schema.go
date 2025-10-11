@@ -413,9 +413,11 @@ func GenerateGoSchema(sref *openapi3.SchemaRef, path []string) (Schema, error) {
 
 				required := StringInArray(pName, schema.Required)
 
-				if (pSchema.HasAdditionalProperties || len(pSchema.UnionElements) != 0) && pSchema.RefType == "" {
-					// If we have fields present which have additional properties or union values,
-					// but are not a pre-defined type, we need to define a type
+				// For Mint, we need to extract all inline objects with properties into named types
+				// since Mint doesn't support inline struct syntax
+				if pSchema.RefType == "" && (pSchema.HasAdditionalProperties || len(pSchema.UnionElements) != 0 || len(pSchema.Properties) > 0) {
+					// If we have fields present which have additional properties, union values,
+					// or any properties, but are not a pre-defined type, we need to define a type
 					// for them, which will be based on the field names we followed
 					// to get to the type.
 					typeName := PathToTypeName(propertyPath)
@@ -570,8 +572,9 @@ func oapiSchemaToGoType(schema *openapi3.Schema, path []string, outSchema *Schem
 		if err != nil {
 			return fmt.Errorf("error generating type for array: %w", err)
 		}
-		if (arrayType.HasAdditionalProperties || len(arrayType.UnionElements) != 0) && arrayType.RefType == "" {
-			// If we have items which have additional properties or union values,
+		// For Mint, we need to extract all inline objects with properties into named types
+		if arrayType.RefType == "" && (arrayType.HasAdditionalProperties || len(arrayType.UnionElements) != 0 || len(arrayType.Properties) > 0) {
+			// If we have items which have additional properties, union values, or properties
 			// but are not a pre-defined type, we need to define a type
 			// for them, which will be based on the field names we followed
 			// to get to the type.
@@ -635,21 +638,27 @@ func oapiSchemaToGoType(schema *openapi3.Schema, path []string, outSchema *Schem
 		// Special case string formats here.
 		switch f {
 		case "byte":
-			outSchema.GoType = "[]byte"
-			setSkipOptionalPointerForContainerType(outSchema)
+			// In Mint, byte arrays are just strings (base64 encoded)
+			outSchema.GoType = "string"
 		case "email":
-			outSchema.GoType = "openapi_types.Email"
+			// Email is just a string in Mint
+			outSchema.GoType = "string"
 		case "date":
-			outSchema.GoType = "openapi_types.Date"
+			// Date is represented as String in Mint (ISO 8601 format)
+			outSchema.GoType = "string"
 		case "date-time":
-			outSchema.GoType = "time.Time"
+			// DateTime is represented as String in Mint (ISO 8601 format)
+			outSchema.GoType = "string"
 		case "json":
-			outSchema.GoType = "json.RawMessage"
+			// JSON is represented as Object in Mint
+			outSchema.GoType = "interface{}"
 			outSchema.SkipOptionalPointer = true
 		case "uuid":
-			outSchema.GoType = "openapi_types.UUID"
+			// UUID is just a string in Mint
+			outSchema.GoType = "string"
 		case "binary":
-			outSchema.GoType = "openapi_types.File"
+			// Binary is represented as String in Mint
+			outSchema.GoType = "string"
 		default:
 			// All unrecognized formats are simply a regular string.
 			outSchema.GoType = "string"

@@ -23,17 +23,18 @@ provider {{ $providerName }} : {{$providerName}}Subscription {
 {{$bodyType := "" -}}
 {{- range .Bodies}}{{if .Default}}{{$bodyType = goTypeToMintType .Schema.TypeDecl}}{{break}}{{end}}{{end -}}
   // {{$opid}}{{if .HasBody}} with body{{end}}
-  fun {{$opid | lcFirst}}({{if $pathParams}}{{range $i, $param := $pathParams}}{{if $i}}, {{end}}{{$param.ParamName | lcFirst}} : {{goTypeToMintType $param.Schema.TypeDecl}}{{end}}{{end}}{{if $hasParams}}{{if $pathParams}}, {{end}}params : {{$opid}}Params{{end}}{{if .HasBody}}{{if or $pathParams $hasParams}}, {{end}}body : {{$bodyType}}{{end}}) : Promise(Result(Http.ErrorResponse, {{$responseType}})) {
+  fun {{$opid | lcFirst}}({{if $pathParams}}{{range $i, $param := $pathParams}}{{if $i}}, {{end}}{{$param.ParamName | camelCase | lcFirst}} : {{goTypeToMintType $param.Schema.TypeDecl}}{{end}}{{end}}{{if $hasParams}}{{if $pathParams}}, {{end}}params : {{$opid}}Params{{end}}{{if .HasBody}}{{if or $pathParams $hasParams}}, {{end}}body : {{$bodyType}}{{end}}) : Promise(Result(Http.ErrorResponse, {{$responseType}})) {
     {{- if .QueryParams}}
     let queryParams =
       [
         {{- range $i, $param := .QueryParams}}
         {{- if $i}},{{end}}
         {{- $mintType := goTypeToMintType $param.Schema.TypeDecl}}
+        {{- $fieldName := $param.ParamName | camelCase | lcFirst}}
         {{if $param.Required}}
-        {"{{$param.ParamName}}", {{mintToStringExpr $mintType (printf "params.%s" ($param.ParamName | lcFirst))}}}
+        {"{{$param.ParamName}}", {{mintToStringExpr $mintType (printf "params.%s" $fieldName)}}}
         {{- else}}
-        Maybe.map(params.{{$param.ParamName | lcFirst}}, (value : {{$mintType}}) : Tuple(String, String) { {"{{$param.ParamName}}", {{mintToStringExpr $mintType "value"}}} })
+        Maybe.map(params.{{$fieldName}}, (value : {{$mintType}}) : Tuple(String, String) { {"{{$param.ParamName}}", {{mintToStringExpr $mintType "value"}}} })
         {{- end}}
         {{- end}}
       ]
@@ -55,6 +56,28 @@ provider {{ $providerName }} : {{$providerName}}Subscription {
       |> Http.jsonBody(encode body){{end}}{{else if eq (.Method | lower) "put"}}Http.put(url){{if .HasBody}}
       |> Http.jsonBody(encode body){{end}}{{else if eq (.Method | lower) "delete"}}Http.delete(url){{else if eq (.Method | lower) "patch"}}Http.patch(url){{if .HasBody}}
       |> Http.jsonBody(encode body){{end}}{{else}}Http.get(url){{end}}
+      {{- range .HeaderParams}}
+      {{- $mintType := goTypeToMintType .Schema.TypeDecl}}
+      {{- $fieldName := .ParamName | camelCase | lcFirst}}
+      {{- if .Required}}
+      |> Http.header("{{.ParamName}}", {{mintToStringExpr $mintType (printf "params.%s" $fieldName)}})
+      {{- end}}
+      {{- end}}
+{{- range .HeaderParams}}
+{{- if not .Required}}
+{{- $mintType := goTypeToMintType .Schema.TypeDecl}}
+{{- $fieldName := .ParamName | camelCase | lcFirst}}
+
+    let request =
+      case params.{{$fieldName}} {
+        Maybe.Just(value) =>
+          request |> Http.header("{{.ParamName}}", {{mintToStringExpr $mintType "value"}})
+        
+        Maybe.Nothing =>
+          request
+      }
+{{- end}}
+{{- end}}
 
     let Ok(httpResponse) =
       await Http.send(request) or return Result.Err({

@@ -389,7 +389,8 @@ func mintPathWithParams(path string, params []ParameterDefinition) string {
 	result := path
 	for _, param := range params {
 		placeholder := "{" + param.ParamName + "}"
-		paramName := LowercaseFirstCharacter(param.ParamName)
+		// Convert to camelCase first, then lowercase the first character
+		paramName := LowercaseFirstCharacter(ToCamelCase(param.ParamName))
 		replacement := "#{" + paramName + "}"
 		result = strings.ReplaceAll(result, placeholder, replacement)
 	}

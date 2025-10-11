@@ -179,10 +179,12 @@ func DescribeParameters(params openapi3.Parameters, path []string) ([]ParameterD
 			Schema:    goType,
 		}
 
-		// If this is a reference to a predefined type, simply use the reference
+		// If this is a reference to a predefined schema type, use the reference
 		// name as the type. $ref: "#/components/schemas/custom_type" becomes
 		// "CustomType".
-		if IsGoTypeReference(paramOrRef.Ref) {
+		// However, parameter references (like $ref: "#/components/parameters/foo")
+		// should use the schema of the referenced parameter, not the parameter name.
+		if IsGoTypeReference(paramOrRef.Ref) && !strings.Contains(paramOrRef.Ref, "/parameters/") {
 			goType, err := RefPathToGoType(paramOrRef.Ref)
 			if err != nil {
 				return nil, fmt.Errorf("error dereferencing (%s) for param (%s): %s",
@@ -352,6 +354,15 @@ func (o *OperationDefinition) GetResponseTypeDefinitions() ([]ResponseTypeDefini
 							refType += mediaTypeToCamelCase(contentTypeName)
 						}
 						td.Schema.RefType = refType
+					} else if len(responseSchema.Properties) > 0 {
+						// For Mint, inline response bodies with properties need to be
+						// extracted as named types since Mint doesn't support inline struct syntax
+						td.Schema.RefType = typeName
+						// Add the type definition to the additional types
+						td.AdditionalTypeDefinitions = append(td.AdditionalTypeDefinitions, TypeDefinition{
+							TypeName: typeName,
+							Schema:   responseSchema,
+						})
 					}
 					tds = append(tds, td)
 				}
@@ -836,6 +847,16 @@ func GenerateResponseDefinitions(operationID string, responses map[string]*opena
 				return nil, fmt.Errorf("error generating request body definition: %w", err)
 			}
 
+			// For Mint, inline response bodies with properties need to be extracted as named types
+			if content.Schema != nil && !IsGoTypeReference(content.Schema.Ref) && len(contentSchema.Properties) > 0 && contentSchema.RefType == "" {
+				// Create a type definition for this inline response body
+				contentSchema.RefType = responseTypeName
+				contentSchema.AdditionalTypes = append(contentSchema.AdditionalTypes, TypeDefinition{
+					TypeName: responseTypeName,
+					Schema:   contentSchema,
+				})
+			}
+
 			rcd := ResponseContentDefinition{
 				ContentType: contentType,
 				NameTag:     tag,
@@ -898,6 +919,13 @@ func GenerateTypeDefsForOperation(op OperationDefinition) []TypeDefinition {
 
 	for _, body := range op.Bodies {
 		typeDefs = append(typeDefs, body.Schema.AdditionalTypes...)
+	}
+
+	// Also collect additional types from responses (for inline response bodies)
+	for _, response := range op.Responses {
+		for _, content := range response.Contents {
+			typeDefs = append(typeDefs, content.Schema.AdditionalTypes...)
+		}
 	}
 	return typeDefs
 }
