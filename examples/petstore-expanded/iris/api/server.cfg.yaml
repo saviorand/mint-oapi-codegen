@@ -1,6 +1,0 @@
-# yaml-language-server: $schema=../../../../configuration-schema.json
-package: api
-generate:
-  iris-server: true
-  embedded-spec: true
-output: petstore-server.gen.go

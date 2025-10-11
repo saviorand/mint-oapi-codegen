@@ -202,12 +202,13 @@ func Generate(spec *openapi3.T, opts Configuration) (string, error) {
 	}
 
 	var serverURLsDefinitions string
-	if opts.Generate.ServerURLs {
-		serverURLsDefinitions, err = GenerateServerURLs(t, spec)
-		if err != nil {
-			return "", fmt.Errorf("error generating Server URLs: %w", err)
-		}
-	}
+	// Mint codegen: ServerURLs not supported for Mint
+	// if opts.Generate.ServerURLs {
+	// 	serverURLsDefinitions, err = GenerateServerURLs(t, spec)
+	// 	if err != nil {
+	// 		return "", fmt.Errorf("error generating Server URLs: %w", err)
+	// 	}
+	// }
 
 	var irisServerOut string
 	if opts.Generate.IrisServer {
@@ -857,70 +858,18 @@ func GenerateImports(t *template.Template, externalImports []string, packageName
 // GenerateAdditionalPropertyBoilerplate generates all the glue code which provides
 // the API for interacting with additional properties and JSON-ification
 func GenerateAdditionalPropertyBoilerplate(t *template.Template, typeDefs []TypeDefinition) (string, error) {
-	var filteredTypes []TypeDefinition
-
-	m := map[string]bool{}
-
-	for _, t := range typeDefs {
-		if found := m[t.TypeName]; found {
-			continue
-		}
-
-		m[t.TypeName] = true
-
-		if t.Schema.HasAdditionalProperties {
-			filteredTypes = append(filteredTypes, t)
-		}
-	}
-
-	context := struct {
-		Types []TypeDefinition
-	}{
-		Types: filteredTypes,
-	}
-
-	return GenerateTemplates([]string{"additional-properties.tmpl"}, t, context)
+	// Mint codegen: Additional properties boilerplate not needed for Mint
+	return "", nil
 }
 
 func GenerateUnionBoilerplate(t *template.Template, typeDefs []TypeDefinition) (string, error) {
-	var filteredTypes []TypeDefinition
-	for _, t := range typeDefs {
-		if len(t.Schema.UnionElements) != 0 {
-			filteredTypes = append(filteredTypes, t)
-		}
-	}
-
-	if len(filteredTypes) == 0 {
-		return "", nil
-	}
-
-	context := struct {
-		Types []TypeDefinition
-	}{
-		Types: filteredTypes,
-	}
-
-	return GenerateTemplates([]string{"union.tmpl"}, t, context)
+	// Mint codegen: Union boilerplate not needed for Mint
+	return "", nil
 }
 
 func GenerateUnionAndAdditionalProopertiesBoilerplate(t *template.Template, typeDefs []TypeDefinition) (string, error) {
-	var filteredTypes []TypeDefinition
-	for _, t := range typeDefs {
-		if len(t.Schema.UnionElements) != 0 && t.Schema.HasAdditionalProperties {
-			filteredTypes = append(filteredTypes, t)
-		}
-	}
-
-	if len(filteredTypes) == 0 {
-		return "", nil
-	}
-	context := struct {
-		Types []TypeDefinition
-	}{
-		Types: filteredTypes,
-	}
-
-	return GenerateTemplates([]string{"union-and-additional-properties.tmpl"}, t, context)
+	// Mint codegen: Union and additional properties boilerplate not needed for Mint
+	return "", nil
 }
 
 // SanitizeCode runs sanitizers across the generated Go code to ensure the

@@ -59,8 +59,6 @@ type ListPostsParams {
 
 
 
-
-
 // BlogApiSubscription is required for the provider (unused for HTTP client)
 type BlogApiSubscription {
   dummy : String
