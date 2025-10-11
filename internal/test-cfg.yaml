@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../configuration-schema.json
+package: TestApi
+output: test-output.gen.mint
+generate:
+  models: true
+  client: true
+
