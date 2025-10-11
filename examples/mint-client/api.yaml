@@ -4,7 +4,7 @@ info:
   title: Simple Blog API
   description: A simple blog API for testing Mint code generation
 servers:
-  - url: https://api.example.com/v1
+  - url: https://jsonplaceholder.typicode.com
 paths:
   /users/{userId}:
     get:

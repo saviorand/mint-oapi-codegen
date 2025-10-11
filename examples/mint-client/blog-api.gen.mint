@@ -67,7 +67,7 @@ type BlogApiSubscription {
 // BlogApi provides HTTP client methods for the API
 provider BlogApi : BlogApiSubscription {
   // The base URL of the API server
-  state baseUrl : String = "https://api.example.com/v1"
+  state baseUrl : String = "https://jsonplaceholder.typicode.com"
   
   // Update function for the provider (required)
   fun update {
