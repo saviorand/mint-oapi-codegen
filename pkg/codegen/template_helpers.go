@@ -411,6 +411,14 @@ func mintToStringExpr(mintType string, varName string) string {
 	}
 }
 
+// getFirstServerURL returns the first server URL from the OpenAPI spec, or empty string if none
+func getFirstServerURL() string {
+	if globalState.spec != nil && len(globalState.spec.Servers) > 0 {
+		return globalState.spec.Servers[0].URL
+	}
+	return ""
+}
+
 // TemplateFunctions is passed to the template engine, and we can call each
 // function here by keyName from the template code.
 var TemplateFunctions = template.FuncMap{
@@ -448,4 +456,5 @@ var TemplateFunctions = template.FuncMap{
 	"mintRecordFromSchema": mintRecordFromSchema,
 	"mintPathWithParams":   mintPathWithParams,
 	"mintToStringExpr":     mintToStringExpr,
+	"getFirstServerURL":    getFirstServerURL,
 }

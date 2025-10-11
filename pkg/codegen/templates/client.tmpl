@@ -7,7 +7,7 @@ type {{$providerName}}Subscription {
 // {{ $providerName }} provides HTTP client methods for the API
 provider {{ $providerName }} : {{$providerName}}Subscription {
   // The base URL of the API server
-  state baseUrl : String = ""
+  state baseUrl : String = "{{getFirstServerURL}}"
   
   // Update function for the provider (required)
   fun update {

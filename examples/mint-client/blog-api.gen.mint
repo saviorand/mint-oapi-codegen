@@ -69,7 +69,12 @@ type BlogApiSubscription {
 // BlogApi provides HTTP client methods for the API
 provider BlogApi : BlogApiSubscription {
   // The base URL of the API server
-  state baseUrl : String = ""
+  state baseUrl : String = "https://api.example.com/v1"
+  
+  // Update function for the provider (required)
+  fun update {
+    void
+  }
 
 // ListPosts
   fun listPosts(params : ListPostsParams) : Promise(Result(Http.ErrorResponse, Array(Post))) {

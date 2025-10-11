@@ -50,7 +50,7 @@ type BlogApiSubscription {
 }
 
 provider BlogApi : BlogApiSubscription {
-  state baseUrl : String = ""
+  state baseUrl : String = "https://api.example.com/v1"
   
   fun getUser(userId : Number) : Promise(Result(Http.ErrorResponse, User)) {
     // ...
