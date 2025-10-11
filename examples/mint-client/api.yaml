@@ -1,0 +1,142 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Simple Blog API
+  description: A simple blog API for testing Mint code generation
+servers:
+  - url: https://api.example.com/v1
+paths:
+  /users/{userId}:
+    get:
+      operationId: getUser
+      summary: Get a user by ID
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+  /posts:
+    get:
+      operationId: listPosts
+      summary: List all posts
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of posts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Post"
+    post:
+      operationId: createPost
+      summary: Create a new post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewPost"
+      responses:
+        '201':
+          description: Post created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+  /posts/{postId}:
+    get:
+      operationId: getPost
+      summary: Get a post by ID
+      parameters:
+        - name: postId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Post found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Post"
+
+components:
+  schemas:
+    User:
+      type: object
+      required:
+        - id
+        - username
+        - email
+      properties:
+        id:
+          type: integer
+          description: User ID
+        username:
+          type: string
+          description: Username
+        email:
+          type: string
+          description: Email address
+        bio:
+          type: string
+          description: User bio (optional)
+    Post:
+      type: object
+      required:
+        - id
+        - title
+        - content
+        - authorId
+      properties:
+        id:
+          type: integer
+          description: Post ID
+        title:
+          type: string
+          description: Post title
+        content:
+          type: string
+          description: Post content
+        authorId:
+          type: integer
+          description: ID of the author
+        published:
+          type: boolean
+          description: Whether the post is published
+    NewPost:
+      type: object
+      required:
+        - title
+        - content
+        - authorId
+      properties:
+        title:
+          type: string
+          description: Post title
+        content:
+          type: string
+          description: Post content
+        authorId:
+          type: integer
+          description: ID of the author
+

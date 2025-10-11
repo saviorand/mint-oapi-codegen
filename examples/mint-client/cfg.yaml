@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=../../configuration-schema.json
+package: BlogApi
+output: blog-api.gen.mint
+generate:
+  models: true
+  client: true
+

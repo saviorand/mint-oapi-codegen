@@ -31,7 +31,6 @@ import (
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	"golang.org/x/tools/imports"
 
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/util"
 )
@@ -294,13 +293,14 @@ func Generate(spec *openapi3.T, opts Configuration) (string, error) {
 		}
 	}
 
-	var clientWithResponsesOut string
-	if opts.Generate.Client {
-		clientWithResponsesOut, err = GenerateClientWithResponses(t, ops)
-		if err != nil {
-			return "", fmt.Errorf("error generating client with responses: %w", err)
-		}
-	}
+	// Skip client-with-responses for Mint generation
+	// var clientWithResponsesOut string
+	// if opts.Generate.Client {
+	// 	clientWithResponsesOut, err = GenerateClientWithResponses(t, ops)
+	// 	if err != nil {
+	// 		return "", fmt.Errorf("error generating client with responses: %w", err)
+	// 	}
+	// }
 
 	var inlinedSpec string
 	if opts.Generate.EmbeddedSpec {
@@ -349,10 +349,11 @@ func Generate(spec *openapi3.T, opts Configuration) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("error writing client: %w", err)
 		}
-		_, err = w.WriteString(clientWithResponsesOut)
-		if err != nil {
-			return "", fmt.Errorf("error writing client: %w", err)
-		}
+		// Skip client-with-responses for Mint generation
+		// _, err = w.WriteString(clientWithResponsesOut)
+		// if err != nil {
+		// 	return "", fmt.Errorf("error writing client: %w", err)
+		// }
 	}
 
 	if opts.Generate.IrisServer {
@@ -424,20 +425,10 @@ func Generate(spec *openapi3.T, opts Configuration) (string, error) {
 		return "", fmt.Errorf("error flushing output buffer: %w", err)
 	}
 
-	// remove any byte-order-marks which break Go-Code
-	goCode := SanitizeCode(buf.String())
-
-	// The generation code produces unindented horrors. Use the Go Imports
-	// to make it all pretty.
-	if opts.OutputOptions.SkipFmt {
-		return goCode, nil
-	}
-
-	outBytes, err := imports.Process(opts.PackageName+".go", []byte(goCode), nil)
-	if err != nil {
-		return "", fmt.Errorf("error formatting Go code %s: %w", goCode, err)
-	}
-	return string(outBytes), nil
+	// For Mint code generation, we skip Go-specific formatting
+	// and return the raw generated code
+	mintCode := buf.String()
+	return mintCode, nil
 }
 
 func GenerateTypeDefinitions(t *template.Template, swagger *openapi3.T, ops []OperationDefinition, excludeSchemas []string) (string, error) {

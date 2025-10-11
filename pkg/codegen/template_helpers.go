@@ -316,6 +316,101 @@ func genServerURLWithVariablesFunctionParams(goTypePrefix string, variables map[
 	return strings.Join(parts, ", ")
 }
 
+// goTypeToMintType converts a Go type string to a Mint type string
+func goTypeToMintType(goType string) string {
+	// Handle pointer types
+	goType = strings.TrimPrefix(goType, "*")
+
+	// Basic type mappings
+	switch goType {
+	case "string":
+		return "String"
+	case "int", "int32", "int64", "float32", "float64":
+		return "Number"
+	case "bool":
+		return "Bool"
+	case "interface{}":
+		return "Object"
+	case "time.Time":
+		return "Time"
+	}
+
+	// Handle arrays: []T -> Array(T)
+	if strings.HasPrefix(goType, "[]") {
+		innerType := goType[2:]
+		return fmt.Sprintf("Array(%s)", goTypeToMintType(innerType))
+	}
+
+	// Handle maps: map[string]T -> Map(String, T)
+	if strings.HasPrefix(goType, "map[") {
+		// Extract key and value types
+		// This is a simple parser for map[K]V
+		mapContent := strings.TrimPrefix(goType, "map[")
+		parts := strings.SplitN(mapContent, "]", 2)
+		if len(parts) == 2 {
+			keyType := goTypeToMintType(parts[0])
+			valueType := goTypeToMintType(parts[1])
+			return fmt.Sprintf("Map(%s, %s)", keyType, valueType)
+		}
+	}
+
+	// For custom types, return as-is (they should already be proper names)
+	return goType
+}
+
+// mintFieldDecl generates a Mint record field declaration
+func mintFieldDecl(fieldName string, goType string, required bool) string {
+	mintType := goTypeToMintType(goType)
+	if !required && !strings.HasPrefix(mintType, "Maybe(") {
+		mintType = fmt.Sprintf("Maybe(%s)", mintType)
+	}
+	return fmt.Sprintf("%s : %s", fieldName, mintType)
+}
+
+// mintRecordFromSchema generates a Mint record type from schema properties
+func mintRecordFromSchema(properties []Property) string {
+	if len(properties) == 0 {
+		return "{}"
+	}
+
+	var fields []string
+	for _, prop := range properties {
+		fieldName := LowercaseFirstCharacter(prop.GoFieldName())
+		goType := prop.Schema.TypeDecl()
+		field := mintFieldDecl(fieldName, goType, prop.Required)
+		fields = append(fields, "  "+field)
+	}
+
+	return "{\n" + strings.Join(fields, ",\n") + "\n}"
+}
+
+// mintPathWithParams replaces {param} with #{param} for Mint string interpolation
+func mintPathWithParams(path string, params []ParameterDefinition) string {
+	result := path
+	for _, param := range params {
+		placeholder := "{" + param.ParamName + "}"
+		paramName := LowercaseFirstCharacter(param.ParamName)
+		replacement := "#{" + paramName + "}"
+		result = strings.ReplaceAll(result, placeholder, replacement)
+	}
+	return result
+}
+
+// mintToStringExpr generates a Mint expression to convert a value to String
+func mintToStringExpr(mintType string, varName string) string {
+	switch mintType {
+	case "String":
+		return varName
+	case "Number":
+		return "Number.toString(" + varName + ")"
+	case "Bool":
+		return "Bool.toString(" + varName + ")"
+	default:
+		// For complex types, use encode and hope for the best
+		return "encode(" + varName + ")"
+	}
+}
+
 // TemplateFunctions is passed to the template engine, and we can call each
 // function here by keyName from the template code.
 var TemplateFunctions = template.FuncMap{
@@ -346,4 +441,11 @@ var TemplateFunctions = template.FuncMap{
 	"toGoComment":                StringWithTypeNameToGoComment,
 
 	"genServerURLWithVariablesFunctionParams": genServerURLWithVariablesFunctionParams,
+
+	// Mint-specific functions
+	"goTypeToMintType":     goTypeToMintType,
+	"mintFieldDecl":        mintFieldDecl,
+	"mintRecordFromSchema": mintRecordFromSchema,
+	"mintPathWithParams":   mintPathWithParams,
+	"mintToStringExpr":     mintToStringExpr,
 }

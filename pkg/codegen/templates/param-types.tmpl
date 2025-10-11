@@ -1,6 +1,9 @@
 {{range .}}{{$opid := .OperationId}}
 {{range .TypeDefinitions}}
+{{- if .Schema.Properties }}
 // {{.TypeName}} defines parameters for {{$opid}}.
-type {{.TypeName}} {{if .IsAlias}}={{end}} {{.Schema.TypeDecl}}
+type {{.TypeName}} {{mintRecordFromSchema .Schema.Properties}}
+
+{{- end }}
 {{end}}
 {{end}}

@@ -3,8 +3,11 @@
 {{if .IsSupported -}}
 {{$contentType := .ContentType -}}
 {{with .TypeDef $opid}}
+{{if not .IsAlias}}
 // {{.TypeName}} defines body for {{$opid}} for {{$contentType}} ContentType.
-type {{.TypeName}} {{if .IsAlias}}={{end}} {{.Schema.TypeDecl}}
+type {{.TypeName}} {{.Schema.TypeDecl}}
+
+{{end}}
 {{end}}
 {{end}}
 {{end}}
