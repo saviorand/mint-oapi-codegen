@@ -1,15 +1,15 @@
 {{$moduleName := opts.PackageName | ucFirst -}}
 // APIError represents errors that can occur during API calls
 type APIError {
-  HttpError(Http.ErrorResponse),
-  JsonParseError,
+  HttpError(Http.ErrorResponse)
+  JsonParseError
   DecodeError(Object.Error)
 }
 
 // {{ $moduleName }} provides HTTP client methods for the API
 module {{ $moduleName }} {
   // The base URL of the API server
-  const BASE_URL : String = "{{getFirstServerURL}}"
+  const BASE_URL = "{{getFirstServerURL}}"
 
 {{range . -}}
 {{$opid := .OperationId -}}
@@ -30,7 +30,7 @@ module {{ $moduleName }} {
       {{if $param.Required}}
       |> SearchParams.set("{{$param.ParamName}}", {{mintToStringExpr $mintType (printf "params.%s" $fieldName)}})
       {{- else}}
-      |> (\(sp : SearchParams) {
+      |> ((sp : SearchParams) : SearchParams {
         case params.{{$fieldName}} {
           Maybe.Just(value) =>
             SearchParams.set("{{$param.ParamName}}", {{mintToStringExpr $mintType "value"}}, sp)
