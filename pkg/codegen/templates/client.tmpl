@@ -1,18 +1,15 @@
-{{$providerName := opts.PackageName | ucFirst -}}
-// {{$providerName}}Subscription is required for the provider (unused for HTTP client)
-type {{$providerName}}Subscription {
-  dummy : String
+{{$moduleName := opts.PackageName | ucFirst -}}
+// APIError represents errors that can occur during API calls
+type APIError {
+  HttpError(Http.ErrorResponse),
+  JsonParseError,
+  DecodeError(Object.Error)
 }
 
-// {{ $providerName }} provides HTTP client methods for the API
-provider {{ $providerName }} : {{$providerName}}Subscription {
+// {{ $moduleName }} provides HTTP client methods for the API
+module {{ $moduleName }} {
   // The base URL of the API server
-  state baseUrl : String = "{{getFirstServerURL}}"
-  
-  // Update function for the provider (required)
-  fun update {
-    void
-  }
+  const BASE_URL : String = "{{getFirstServerURL}}"
 
 {{range . -}}
 {{$opid := .OperationId -}}
@@ -23,33 +20,41 @@ provider {{ $providerName }} : {{$providerName}}Subscription {
 {{$bodyType := "" -}}
 {{- range .Bodies}}{{if .Default}}{{$bodyType = goTypeToMintType .Schema.TypeDecl}}{{break}}{{end}}{{end -}}
   // {{$opid}}{{if .HasBody}} with body{{end}}
-  fun {{$opid | lcFirst}}({{if $pathParams}}{{range $i, $param := $pathParams}}{{if $i}}, {{end}}{{$param.ParamName | camelCase | lcFirst}} : {{goTypeToMintType $param.Schema.TypeDecl}}{{end}}{{end}}{{if $hasParams}}{{if $pathParams}}, {{end}}params : {{$opid}}Params{{end}}{{if .HasBody}}{{if or $pathParams $hasParams}}, {{end}}body : {{$bodyType}}{{end}}) : Promise(Result(Http.ErrorResponse, {{$responseType}})) {
+  fun {{$opid | lcFirst}}({{if $pathParams}}{{range $i, $param := $pathParams}}{{if $i}}, {{end}}{{$param.ParamName | camelCase | lcFirst}} : {{goTypeToMintType $param.Schema.TypeDecl}}{{end}}{{end}}{{if $hasParams}}{{if $pathParams}}, {{end}}params : {{$opid}}Params{{end}}{{if .HasBody}}{{if or $pathParams $hasParams}}, {{end}}body : {{$bodyType}}{{end}}) : Promise(Result(APIError, {{$responseType}})) {
     {{- if .QueryParams}}
     let queryParams =
-      [
-        {{- range $i, $param := .QueryParams}}
-        {{- if $i}},{{end}}
-        {{- $mintType := goTypeToMintType $param.Schema.TypeDecl}}
-        {{- $fieldName := $param.ParamName | camelCase | lcFirst}}
-        {{if $param.Required}}
-        {"{{$param.ParamName}}", {{mintToStringExpr $mintType (printf "params.%s" $fieldName)}}}
-        {{- else}}
-        Maybe.map(params.{{$fieldName}}, (value : {{$mintType}}) : Tuple(String, String) { {"{{$param.ParamName}}", {{mintToStringExpr $mintType "value"}}} })
-        {{- end}}
-        {{- end}}
-      ]
-      |> Array.compact()
+      SearchParams.empty()
+      {{- range $param := .QueryParams}}
+      {{- $mintType := goTypeToMintType $param.Schema.TypeDecl}}
+      {{- $fieldName := $param.ParamName | camelCase | lcFirst}}
+      {{if $param.Required}}
+      |> SearchParams.set("{{$param.ParamName}}", {{mintToStringExpr $mintType (printf "params.%s" $fieldName)}})
+      {{- else}}
+      |> (\(sp : SearchParams) {
+        case params.{{$fieldName}} {
+          Maybe.Just(value) =>
+            SearchParams.set("{{$param.ParamName}}", {{mintToStringExpr $mintType "value"}}, sp)
+          
+          Maybe.Nothing =>
+            sp
+        }
+      })
+      {{- end}}
+      {{- end}}
 
     let queryString =
-      if Array.isEmpty(queryParams) {
-        ""
-      } else {
-        "?" + String.join(Array.map(queryParams, (param : Tuple(String, String)) { "#{param[0]}=#{param[1]}" }), "&")
-      }
+      SearchParams.toString(queryParams)
+      |> (\(qs : String) {
+        if String.isEmpty(qs) {
+          ""
+        } else {
+          "?" + qs
+        }
+      })
     {{- end}}
 
     let url =
-      "#{baseUrl}{{mintPathWithParams .Path .PathParams}}"{{if .QueryParams}} + queryString{{end}}
+      "#{BASE_URL}{{mintPathWithParams .Path .PathParams}}"{{if .QueryParams}} + queryString{{end}}
 
     let request =
       {{if eq (.Method | lower) "get"}}Http.get(url){{else if eq (.Method | lower) "post"}}Http.post(url){{if .HasBody}}
@@ -80,29 +85,20 @@ provider {{ $providerName }} : {{$providerName}}Subscription {
 {{- end}}
 
     let Ok(httpResponse) =
-      await Http.send(request) or return Result.Err({
-        headers: Map.empty(),
-        type: Http.Error.NetworkError,
-        status: 0,
-        url: url
-      })
+      await Http.send(request) or return Result.Err(
+        APIError.HttpError({
+          headers: Map.empty(),
+          type: Http.Error.NetworkError,
+          status: 0,
+          url: url
+        }))
 
     let JSON(object) =
-      httpResponse.body or return Result.Err({
-        headers: httpResponse.headers,
-        type: Http.Error.NetworkError,
-        status: httpResponse.status,
-        url: url
-      })
+      httpResponse.body or return Result.Err(APIError.JsonParseError)
 
     decode object as {{$responseType}}
-    |> Result.mapError((error : Object.Error) : Http.ErrorResponse {
-      {
-        headers: httpResponse.headers,
-        type: Http.Error.NetworkError,
-        status: httpResponse.status,
-        url: url
-      }
+    |> Result.mapError((error : Object.Error) : APIError {
+      APIError.DecodeError(error)
     })
   }
 
