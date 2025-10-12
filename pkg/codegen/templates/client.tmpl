@@ -44,7 +44,7 @@ module {{ $moduleName }} {
 
     let queryString =
       SearchParams.toString(queryParams)
-      |> (\(qs : String) {
+      |> ((qs : String) : String {
         if String.isEmpty(qs) {
           ""
         } else {
