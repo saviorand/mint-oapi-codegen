@@ -1,11 +1,4 @@
 {{$moduleName := opts.PackageName | ucFirst -}}
-// APIError represents errors that can occur during API calls
-type APIError {
-  HttpError(Http.ErrorResponse)
-  JsonParseError
-  DecodeError(Object.Error)
-}
-
 // {{ $moduleName }} provides HTTP client methods for the API
 module {{ $moduleName }} {
   // The base URL of the API server
@@ -16,7 +9,8 @@ module {{ $moduleName }} {
 {{$hasParams := .RequiresParamObject -}}
 {{$pathParams := .PathParams -}}
 {{$responseType := "String" -}}
-{{- range .Responses}}{{if eq .StatusCode "200"}}{{if .Contents}}{{range .Contents}}{{$responseType = goTypeToMintType .Schema.TypeDecl}}{{break}}{{end}}{{end}}{{end}}{{end -}}
+{{$is204Response := false -}}
+{{- range .Responses}}{{if eq .StatusCode "204"}}{{$is204Response = true}}{{$responseType = "Bool"}}{{else if eq .StatusCode "200"}}{{if .Contents}}{{range .Contents}}{{$responseType = goTypeToMintType .Schema.TypeDecl}}{{break}}{{end}}{{end}}{{end}}{{end -}}
 {{$bodyType := "" -}}
 {{- range .Bodies}}{{if .Default}}{{$bodyType = goTypeToMintType .Schema.TypeDecl}}{{break}}{{end}}{{end -}}
   // {{$opid}}{{if .HasBody}} with body{{end}}
@@ -92,14 +86,16 @@ module {{ $moduleName }} {
           status: 0,
           url: url
         }))
-
+{{if $is204Response}}
+    // DELETE returns 204 No Content, so just return success
+    Result.Ok(true){{else}}
     let JSON(object) =
       httpResponse.body or return Result.Err(APIError.JsonParseError)
 
     decode object as {{$responseType}}
     |> Result.mapError((error : Object.Error) : APIError {
       APIError.DecodeError(error)
-    })
+    }){{end}}
   }
 
 {{end}}

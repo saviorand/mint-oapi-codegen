@@ -12,3 +12,9 @@ type {{.TypeName}} {{.Schema.TypeDecl}}
 {{end}}
 {{end}}
 {{end}}
+// APIError represents errors that can occur during API calls
+type APIError {
+  HttpError(Http.ErrorResponse)
+  JsonParseError
+  DecodeError(Object.Error)
+}
