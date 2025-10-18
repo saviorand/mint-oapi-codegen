@@ -861,7 +861,8 @@ func PathToTypeName(path []string) string {
 	for i, p := range path {
 		path[i] = nameNormalizer(p)
 	}
-	return strings.Join(path, "_")
+	// For Mint, join without underscore since underscores are invalid in type names
+	return strings.Join(path, "")
 }
 
 // StringToGoComment renders a possible multi-line string as a valid Go-Comment.
